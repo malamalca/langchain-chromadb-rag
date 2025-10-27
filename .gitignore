@@ -2,3 +2,6 @@
 /__pycache__/
 /ingest/*
 /database/*
+config.local.json
+!/ingest/.gitkeep
+!/database/.gitkeep

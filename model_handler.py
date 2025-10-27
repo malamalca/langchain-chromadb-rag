@@ -23,6 +23,7 @@ class ModelHandler:
         try:
             return ChatOllama(
                     model=self.cli_args.model, 
+                    validate_model_on_init=True,
                     base_url=self.cli_args.ollama_address,
                     temperature=self.config["llm_options"]["temperature"],
                     num_predict=self.config["llm_options"]["tokens_to_generate"],
@@ -34,7 +35,10 @@ class ModelHandler:
     def combine_context(self, related_docs):
         context = ""
         for result in related_docs:
-            doc = result[0]
+            if self.config["rag_options"].get("use_reranker", False):
+                doc = result
+            else:
+                doc = result[0]
             context += doc.page_content+"\n"
         return context
 

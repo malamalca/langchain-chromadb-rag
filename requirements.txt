@@ -8,3 +8,4 @@ watchdog
 docx2txt
 fastembed
 pypdf
+flashrank
