@@ -4,7 +4,7 @@ from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, cs
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_compressors import FlashrankRerank
 from flashrank import Ranker 
-from langchain.retrievers import ContextualCompressionRetriever
+
 from langchain_chroma import Chroma
 import chromadb
 
@@ -59,27 +59,13 @@ class RAGHandler:
         print(f"Added document to the database.")
 
     def get_docs_by_similarity(self, query):
+        docs_and_scores  = self.vector_store.similarity_search_with_relevance_scores(
+            query=query,
+            k=self.config["rag_options"]["results_to_return"],
+            score_threshold= self.config["rag_options"]["similarity_threshold"],
+        )
+                    
         if self.config["rag_options"].get("use_reranker", False):
-            compression_retriever = ContextualCompressionRetriever(
-                base_compressor=self.reranker,
-                base_retriever=self.vector_store.as_retriever(
-                    search_type="similarity_score_threshold",
-                    search_kwargs={
-                        "k": self.config["rag_options"]["results_to_return"],
-                        "score_threshold": self.config["rag_options"]["similarity_threshold"],
-                    },
-                ),
-            )
+            self.reranker.compress_documents(documents=docs_and_scores, query=query)
 
-            docs_and_scores = compression_retriever.invoke(query)
-        else:
-            docs_and_scores  = self.vector_store.similarity_search_with_relevance_scores(
-                    query=query,
-                    k=self.config["rag_options"]["results_to_return"],
-                    score_threshold= self.config["rag_options"]["similarity_threshold"],
-                )
-
-        #print(f"Retrieved {len(docs_and_scores)} documents based on similarity.")
-        #for i, score in enumerate(docs_and_scores):
-        #    print(f"Document {i+1} - Similarity Score: {score}")
         return docs_and_scores
