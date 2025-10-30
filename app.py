@@ -8,9 +8,11 @@ from watchdog.observers import Observer
 
 import rag_handler as rh
 import model_handler as mh
+import custom_formatter as cf
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.getLogger().handlers[0].setFormatter(cf.CustomFormatter())
 
 # Load configuration // Yapılandırmayı yükle
 with open("config.json", mode="r", encoding="utf-8") as read_file:
@@ -42,7 +44,8 @@ args = parse_arguments()
 # Watch the ingestion folder // İçe aktarma klasörünü izle
 class FileSystemWatcher(watchdog.events.FileSystemEventHandler):
     def on_created(self, event):
-        if not event.src_path.startswith('.'):
+        file_name = event.src_path.split('/')[-1]
+        if not file_name.startswith('.'):  # Ignore hidden files // Gizli dosyaları yoksay
             logging.info(f"Detected and Ingesting: {event.src_path}")
             docs = rag_handler.load_document(event.src_path)
             # Delete the file after ingestion if thew option is true in config // Config'de belirlendiyse içe aktarmadan sonra dosyayı sil
@@ -83,20 +86,24 @@ def main():
             if user_input == "help":
                 print(parser.format_help())
                 continue
+            if user_input == "clear":
+                model_handler.conversation_history.clear()
+                print("Database cleared.")
+                continue
             # Use RAG if chromadb exists // Chromadb varsa RAG kullan
             # Otherwise, just use the model // Aksi takdirde sadece modeli kullan
             if rag_handler.vector_store._collection.count() > 0:
                 related_docs = rag_handler.get_docs_by_similarity(user_input)
-                #print(f"Related docs: {related_docs}")  # Debug
-                #print(f"User input: {user_input}")  # Debug
+                logging.info(f"Related docs: {len(related_docs)}")  # Debug
                 response = model_handler.get_response(user_input, related_docs, True)
             else:
+                logging.warning("No documents in database, using only the model.")  # Debug
                 response = model_handler.get_response(user_input, None, False)
             
             logging.debug(f"Done Reason: {response.response_metadata.get('done_reason')}")  # Debug
             logging.debug(f"Token Count: {response.response_metadata.get('total_tokens')}")  # Debug
 
-            print(f"Response: {response.content}")
+            print(f"Response: \n{cf.yellow}{response.content}{cf.reset}")
     except KeyboardInterrupt:
         observer.stop()
         logging.info("Exiting...")

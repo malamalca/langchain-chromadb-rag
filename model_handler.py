@@ -1,6 +1,9 @@
 # Ollama related // Ollama ile alakalı
+import sys
+import requests
+import json
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceholder
 from langchain_ollama.chat_models import ChatOllama
 
 class ModelHandler:
@@ -18,6 +21,14 @@ class ModelHandler:
                 Question: {user_input}
             """
         )
+
+        self.chat_prompt = ChatPromptTemplate.from_messages([
+            ("system", cli_args.system_prompt),
+            MessagesPlaceholder("conversation"),  # Dynamic history insertion
+            ("human", "{current_question}")
+        ])
+
+        self.conversation_history = []
     
     def load_model(self):
         try:
@@ -27,6 +38,7 @@ class ModelHandler:
                     base_url=self.cli_args.ollama_address,
                     temperature=self.config["llm_options"]["temperature"],
                     num_predict=self.config["llm_options"]["tokens_to_generate"],
+                    
                 )
         except Exception as e:
             print(f"Error loading model: {e}\n Make sure you have installed the model and ollama is running")
@@ -47,5 +59,21 @@ class ModelHandler:
             # Combine the contents of the related document parts // İlgili belge parçalarının içeriklerini birleştir
             context = self.combine_context(related_docs)
             prompt = self.prompt_template.format(context=context, user_input=user_input)
-            return self.model.invoke([HumanMessage(prompt)])
-        return self.model.invoke([HumanMessage(user_input)])
+        else:
+            prompt = user_input
+
+        formatted_messages = self.chat_prompt.format_messages(
+            conversation=self.conversation_history,
+            current_question=prompt
+        )
+
+        if sys.getsizeof(formatted_messages) > self.config["llm_options"]["max_context_size"]:
+            print("Warning: The conversation history is too large. Deleteing oldest messages to fit the context size.")
+            self.conversation_history = self.conversation_history[1:] # Remove the oldest message
+
+        response = self.model.invoke(formatted_messages)
+        self.conversation_history.append(HumanMessage(content=prompt))
+        self.conversation_history.append(response)
+        return response
+
+        #return self.model.invoke([HumanMessage(prompt)])
