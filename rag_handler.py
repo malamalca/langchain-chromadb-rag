@@ -64,8 +64,10 @@ class RAGHandler:
             k=self.config["rag_options"]["results_to_return"],
             score_threshold= self.config["rag_options"]["similarity_threshold"],
         )
+
+        docs_only = objects = [x[0] for x in docs_and_scores]
                     
         if self.config["rag_options"].get("use_reranker", False):
-            self.reranker.compress_documents(documents=docs_and_scores, query=query)
+            self.reranker.compress_documents(documents=docs_only, query=query)
 
-        return docs_and_scores
+        return docs_only

@@ -47,11 +47,8 @@ class ModelHandler:
     def combine_context(self, related_docs):
         context = ""
         for result in related_docs:
-            if self.config["rag_options"].get("use_reranker", False):
-                doc = result
-            else:
-                doc = result[0]
-            context += doc.page_content+"\n"
+            # Add the content of each document part to the context // Her belge parçasının içeriğini bağlama ekle
+            context += result.page_content+"\n"
         return context
 
     def get_response(self, user_input, related_docs, useRAG=False):
