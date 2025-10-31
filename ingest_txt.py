@@ -28,31 +28,35 @@ if os.path.exists("config.local.json"):
 
 length_function = len
 
-# The default list of split characters is [\n\n, \n, " ", ""]
-# Tries to split on them in order until the chunks are small enough
-# Keep paragraphs, sentences, words together as long as possible
-splitter = RecursiveCharacterTextSplitter(
-    separators=[r"\n\d\.(?:(?:\d{1,3}\.)?\d{1,3})?.*\n", r".*. .*len\n", "\n\n", "\n"],
-    is_separator_regex=True,
-    chunk_size=config["splitter_options"]["chunk_size"], 
-    chunk_overlap=config["splitter_options"]["chunk_overlap"],
-    length_function=length_function,
-)
-
+# Command line arguments
 parser = argparse.ArgumentParser(add_help=False)
-
 parser.add_argument("-h", "--help", action="help",
             help="To run this script please provide input text file as an argument.\n")
 parser.add_argument("txt_file", type=str, nargs="?",
             help="Path to the input text file to be ingested into the vector database.\n")
 parser.add_argument("--dry-run", action="store_true", default=False,
             help="If set, the script will only print the splits without adding them to the database.\n")
+parser.add_argument("--collection-name", type=str, default="information",
+            help="Name of the collection in the vector database.\n")
 args, unknown = parser.parse_known_args()
 
 if not args.txt_file or not os.path.exists(args.txt_file):
     logging.error(f"Input file parameter does not exist.")
     sys.exit(1)
 
+# The default list of split characters is [\n\n, \n, " ", ""]
+# Tries to split on them in order until the chunks are small enough
+# Keep paragraphs, sentences, words together as long as possible
+# deli po: Prvi del, II. poglavje, 1.1. naslov, 23. člen, konec odstavka, konec stavka, presledek
+splitter = RecursiveCharacterTextSplitter(
+    separators=[r"^.* del: .*\n", r"^[I,V,X]{1,2}\. poglavje.*\n", r"^\d\.(?:(?:\d{1,3}\.)?\d{1,3})?.*\n", r"^[0..9]{1,4}\.(?:.*)? .*len\n", "\n\n", "\n", " ", ""],
+    is_separator_regex=True,
+    chunk_size=config["splitter_options"]["chunk_size"], 
+    chunk_overlap=config["splitter_options"]["chunk_overlap"],
+    length_function=length_function,
+)
+
+# Load and split the document
 loader = TextLoader(args.txt_file, encoding="utf-8")
 documents = loader.load()
 chunks = splitter.split_documents(documents)
@@ -60,8 +64,9 @@ chunks = splitter.split_documents(documents)
 max_len = max([length_function(s.page_content) for s in chunks])
 
 if not args.dry_run:
+    logging.info(f"Adding document to the database, collection: {args.collection_name}")
     vector_store = Chroma(
-        collection_name="information",
+        collection_name=args.collection_name,
         persist_directory=config["rag_options"]["database_folder"],
         embedding_function=FastEmbedEmbeddings(),
         client_settings=chromadb.config.Settings(

@@ -7,7 +7,8 @@
         "use_reranker":true,
         "use_short_term_memory":false,
         "ingestion_folder":"./ingest",
-        "database_folder":"./database"
+        "database_folder":"./database",
+        "collection_name":"information"
     },
     "splitter_options":{
         "chunk_size":1024,

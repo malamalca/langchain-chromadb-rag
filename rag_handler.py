@@ -24,7 +24,7 @@ class RAGHandler:
 
     def initialize_chroma(self):
         return Chroma(
-            collection_name="information",
+            collection_name=self.config["rag_options"]["collection_name"],
             persist_directory=self.config["rag_options"]["database_folder"],
             embedding_function=FastEmbedEmbeddings(),
             client_settings=chromadb.config.Settings(
