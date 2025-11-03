@@ -1,8 +1,9 @@
-import logging, json, os, sys, argparse
+import logging, json, os, sys, argparse, re
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 import chromadb
 from langchain_community.embeddings import FastEmbedEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain_community.document_loaders import TextLoader
 import custom_formatter as cf
 
@@ -49,7 +50,7 @@ if not args.txt_file or not os.path.exists(args.txt_file):
 # Keep paragraphs, sentences, words together as long as possible
 # deli po: Prvi del, II. poglavje, 1.1. naslov, 23. člen, konec odstavka, konec stavka, presledek
 splitter = RecursiveCharacterTextSplitter(
-    separators=[r"^.* del: .*\n", r"^[I,V,X]{1,2}\. poglavje.*\n", r"^\d\.(?:(?:\d{1,3}\.)?\d{1,3})?.*\n", r"^[0..9]{1,4}\.(?:.*)? .*len\n", "\n\n", "\n", " ", ""],
+    separators=[r".* del: .*\n", r"^[I,V,X]{1,2}\. poglavje.*\n", r"\n\d\.(?:(?:\d{1,3}\.)?\d{1,3})?.*\n", r"\n(?:\ *)?\d{1,4}\.(?:.*)? člen\n", r"\n", r" ", r""],
     is_separator_regex=True,
     chunk_size=config["splitter_options"]["chunk_size"], 
     chunk_overlap=config["splitter_options"]["chunk_overlap"],
@@ -63,12 +64,26 @@ chunks = splitter.split_documents(documents)
 
 max_len = max([length_function(s.page_content) for s in chunks])
 
+# Add lowercase source file metadata to each chunk
+current_article = None
+for chunk in chunks:
+    match = re.search(r"^(?:\ *)?\d{1,4}\.(?:.*)? člen\n", chunk.page_content)
+    if not match and current_article:
+        chunk.page_content = f"{current_article}\n{chunk.page_content}"
+    current_article = match.group(0) if match else current_article
+
+    chunk.metadata["original_text"] = chunk.page_content
+    chunk.page_content = chunk.page_content.lower()
+    chunk.metadata["source_file"] = os.path.basename(args.txt_file).lower()
+
 if not args.dry_run:
     logging.info(f"Adding document to the database, collection: {args.collection_name}")
     vector_store = Chroma(
         collection_name=args.collection_name,
         persist_directory=config["rag_options"]["database_folder"],
-        embedding_function=FastEmbedEmbeddings(),
+        #embedding_function=FastEmbedEmbeddings(),
+        embedding_function=OllamaEmbeddings(model="nomic-embed-text",base_url=config["llm_options"]["ollama_address"]),
+
         client_settings=chromadb.config.Settings(
             anonymized_telemetry=False,
         ),

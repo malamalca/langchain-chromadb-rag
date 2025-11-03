@@ -5,7 +5,7 @@
         "similarity_threshold":0.5,
         "results_to_return":10,
         "use_reranker":true,
-        "use_short_term_memory":false,
+        
         "ingestion_folder":"./ingest",
         "database_folder":"./database",
         "collection_name":"information"
@@ -18,6 +18,8 @@
         "model":"gpt-4o",
         "ollama_address":"http://localhost:11434",
         "system_prompt":"You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If the answer to the question is not mentioned in the context, just say that you don't know and don't say anything else unless the question is about your previous responses or if it's small talk. Respond in the same language as the user's query. Keep the answer concise and use short sentences unless told to do otherwise. State a source and excerpt from source for your answer.",
+        "user_prompt":"Answer the question based on the context below.\n\n{context}\n\nQuestion: {user_input}\n",
+        "use_short_term_memory":false,
         "temperature":0.6,
         "tokens_to_generate":8072,
         "max_context_size": 131072

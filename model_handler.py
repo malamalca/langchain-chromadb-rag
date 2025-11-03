@@ -5,20 +5,17 @@ import json
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate, MessagesPlaceholder
 from langchain_ollama.chat_models import ChatOllama
+from langchain.callbacks.base import BaseCallbackHandler
 
 class ModelHandler:
     def __init__(self, config):
         self.config = config
         
         self.model = self.load_model()
-        self.model.invoke([SystemMessage(self.config["llm_options"]["system_prompt"])])
         
         self.prompt_template = PromptTemplate(
             input_variables=["context", "user_input"],
-            template="""Use the following context to answer the question. 
-                Context: {context}
-                Question: {user_input}
-            """
+            template=self.config["llm_options"]["user_prompt"]
         )
 
         self.chat_prompt = ChatPromptTemplate.from_messages([
@@ -38,7 +35,6 @@ class ModelHandler:
                     base_url=self.config["llm_options"]["ollama_address"],
                     temperature=self.config["llm_options"]["temperature"],
                     num_predict=self.config["llm_options"]["tokens_to_generate"],
-                    
                 )
         except Exception as e:
             print(f"Error loading model: {e}\n Make sure you have installed the model and ollama is running")
@@ -63,12 +59,12 @@ class ModelHandler:
 
         # Format messages for the chat model
         formatted_messages = self.chat_prompt.format_messages(
-            conversation=self.config["rag_options"]["use_short_term_memory"] and self.conversation_history or [],
+            conversation=self.config["llm_options"]["use_short_term_memory"] and self.conversation_history or [],
             current_question=prompt,
         )
 
         # If short-term memory is enabled, store the interaction
-        if self.config["rag_options"]["use_short_term_memory"]:
+        if self.config["llm_options"]["use_short_term_memory"]:
             self.conversation_history.append(HumanMessage(content=prompt))
             self.conversation_history.append(response)
 
