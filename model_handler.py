@@ -63,11 +63,7 @@ class ModelHandler:
             current_question=prompt,
         )
 
-        # If short-term memory is enabled, store the interaction
         if self.config["llm_options"]["use_short_term_memory"]:
-            self.conversation_history.append(HumanMessage(content=prompt))
-            self.conversation_history.append(response)
-
             if sys.getsizeof(formatted_messages) > self.config["llm_options"]["max_context_size"]:
                 print("Warning: The conversation history is too large. Deleteing oldest messages to fit the context size.")
                 
@@ -81,5 +77,14 @@ class ModelHandler:
 
         # Get the response from the model
         response = self.model.invoke(formatted_messages)
+
+        # If short-term memory is enabled, store the interaction
+        if self.config["llm_options"]["use_short_term_memory"]:
+            self.conversation_history.append(HumanMessage(content=prompt))
+            self.conversation_history.append(response)
+
+            
+
+        
 
         return response

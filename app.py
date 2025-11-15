@@ -10,7 +10,7 @@ import model_handler as mh
 import custom_formatter as cf
 
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.getLogger().handlers[0].setFormatter(cf.CustomFormatter())
 
 # Load configuration

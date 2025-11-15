@@ -30,7 +30,8 @@ class RAGHandler:
             collection_name=collection_name,
             persist_directory=self.config["rag_options"]["database_folder"],
             #embedding_function=FastEmbedEmbeddings(),
-            embedding_function=OllamaEmbeddings(model="nomic-embed-text",base_url=self.config["llm_options"]["ollama_address"]),
+            #embedding_function=OllamaEmbeddings(model="nomic-embed-text",base_url=self.config["llm_options"]["ollama_address"]),
+            embedding_function=OllamaEmbeddings(model="bge-m3",base_url=self.config["llm_options"]["ollama_address"]),
             client_settings=chromadb.config.Settings(
                 anonymized_telemetry=False,
             ),
@@ -85,7 +86,7 @@ class RAGHandler:
         collection = self.vector_store._client.get_collection(
             name=self.config["rag_options"]["collection_name"],
             embedding_function=OllamaEmbeddingFunction(
-                model_name="nomic-embed-text",
+                model_name="bge-m3",
                 url=self.config["llm_options"]["ollama_address"]
             ),
         )
@@ -100,8 +101,6 @@ class RAGHandler:
             doc = fulltext_results["documents"][0][i]
             new_doc = Document(page_content=doc, metadata=fulltext_results["metadatas"][0][i], id=fulltext_results["ids"][0][i])
             docs_only.append(new_doc)
-
-
 
         #for doc, score in docs_and_scores:
         #    print(f"Doc ID: {doc.metadata.get('source', 'N/A')}, Score: {score} Content:\n{doc.page_content[:200]}...\n")

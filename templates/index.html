@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RAG Web App</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        #qa-list { margin-top: 20px; }
+        .question { font-weight: bold; margin-top: 10px; }
+        .answer { margin-bottom: 10px; width: 700px; }
+        label, input, button { font-size: 1rem; }
+        input[type="text"] { width: 400px; }
+    </style>
+</head>
+<body>
+    <h1>Ask a Question</h1>
+    <form id="ask-form">
+        <label for="question">Question:</label>
+        <input type="text" id="question" name="question" required>
+        <button type="submit">Ask</button>
+    </form>
+    <div id="qa-list"></div>
+    <script>
+        document.getElementById('ask-form').onsubmit = async function(e) {
+            e.preventDefault();
+            const question = document.getElementById('question').value;
+            const qaList = document.getElementById('qa-list');
+
+            // Insert question at the top
+            const qDiv = document.createElement('div');
+            qDiv.className = 'question';
+            qDiv.innerText = "Q: " + question;
+            qaList.prepend(qDiv);
+
+            // Insert placeholder answer at the top (just below the question)
+            const aDiv = document.createElement('div');
+            aDiv.className = 'answer';
+            aDiv.innerText = "A: Loading...";
+            qaList.insertBefore(aDiv, qDiv.nextSibling);
+
+            const res = await fetch('/ask', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({question})
+            });
+            const data = await res.json();
+            if (data.response) {
+                aDiv.innerText = "A: " + data.response;
+            } else if (data.error) {
+                aDiv.innerText = "Error: " + data.error;
+            } else {
+                aDiv.innerText = "No response.";
+            }
+            document.getElementById('question').value = '';
+        };
+    </script>
+</body>
+</html>

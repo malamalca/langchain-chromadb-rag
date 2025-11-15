@@ -6,6 +6,7 @@ from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.document_loaders import TextLoader
 import custom_formatter as cf
+import custom_text_splitter
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.getLogger().handlers[0].setFormatter(cf.CustomFormatter())
@@ -65,14 +66,25 @@ chunks = splitter.split_documents(documents)
 max_len = max([length_function(s.page_content) for s in chunks])
 
 # Add lowercase source file metadata to each chunk
-current_article = None
+current_article_part_no = 1
+current_article_no = None
 for chunk in chunks:
     match = re.search(r"^(?:\ *)?\d{1,4}\.(?:.*)? člen\n", chunk.page_content)
-    if not match and current_article:
-        chunk.page_content = f"{current_article}\n{chunk.page_content}"
-    current_article = match.group(0) if match else current_article
+    if match:
+        current_article_part_no = 1
+        current_article_no = match.group(0).split(". člen")[0].strip()
+        # Remove the article title from the content
+        lines = chunk.page_content.splitlines()
+        chunk.page_content = '\n'.join(lines[1:])
+
+    if not match and current_article_no:
+        current_article_part_no += 1
+
+
+    chunk.page_content = f"člen številka: {current_article_no}\ndel člena: {current_article_part_no}\n\n{chunk.page_content}"
 
     chunk.metadata["original_text"] = chunk.page_content
+    chunk.metadata["clen"] = current_article_no
     chunk.page_content = chunk.page_content.lower()
     chunk.metadata["source_file"] = os.path.basename(args.txt_file).lower()
 
@@ -82,7 +94,8 @@ if not args.dry_run:
         collection_name=args.collection_name,
         persist_directory=config["rag_options"]["database_folder"],
         #embedding_function=FastEmbedEmbeddings(),
-        embedding_function=OllamaEmbeddings(model="nomic-embed-text",base_url=config["llm_options"]["ollama_address"]),
+        #embedding_function=OllamaEmbeddings(model="nomic-embed-text",base_url=config["llm_options"]["ollama_address"]),
+        embedding_function=OllamaEmbeddings(model="bge-m3",base_url=config["llm_options"]["ollama_address"]),
 
         client_settings=chromadb.config.Settings(
             anonymized_telemetry=False,
